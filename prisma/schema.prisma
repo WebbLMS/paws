@@ -1,0 +1,236 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PLATFORM_ADMIN
+  SHELTER_ADMIN
+  SHELTER_STAFF
+}
+
+enum ShelterStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AnimalStatus {
+  DRAFT
+  AVAILABLE
+  RESERVED
+  ADOPTED
+  ARCHIVED
+}
+
+enum Species {
+  DOG
+  CAT
+  RABBIT
+  BIRD
+  OTHER
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum AnimalSize {
+  SMALL
+  MEDIUM
+  LARGE
+  EXTRA_LARGE
+  UNKNOWN
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  APPROVED
+  DECLINED
+  CLOSED
+}
+
+model Shelter {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  email       String
+  status      ShelterStatus @default(PENDING)
+  phone       String?
+  websiteUrl  String?
+  facebookUrl String?
+  instagramUrl String?
+  suburb      String?
+  city        String   @default("Cape Town")
+  province    String   @default("Western Cape")
+  bio         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users     User[]
+  animals   Animal[]
+  enquiries AdoptionEnquiry[]
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          UserRole @default(SHELTER_STAFF)
+  shelterId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shelter  Shelter?  @relation(fields: [shelterId], references: [id], onDelete: SetNull)
+  sessions Session[]
+  accounts Account[]
+
+  @@index([shelterId])
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+}
+
+model Animal {
+  id              String       @id @default(cuid())
+  shelterId       String
+  name            String
+  slug            String
+  species         Species
+  breed           String?
+  ageMonths       Int?
+  sex             Sex          @default(UNKNOWN)
+  size            AnimalSize   @default(UNKNOWN)
+  status          AnimalStatus @default(DRAFT)
+  summary         String?
+  description     String?
+  traits          String[]
+  isUrgent        Boolean      @default(false)
+  suburb          String?
+  city            String       @default("Cape Town")
+  profileImageUrl String?
+  imageUrls       String[]
+  socialCaption   String?
+  publishedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  shelter   Shelter           @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  enquiries AdoptionEnquiry[]
+
+  @@unique([shelterId, slug])
+  @@index([species, status])
+  @@index([status, publishedAt])
+  @@index([shelterId])
+}
+
+model AdoptionEnquiry {
+  id        String        @id @default(cuid())
+  animalId  String
+  shelterId String
+  name      String
+  email     String
+  phone     String?
+  message   String?
+  status    EnquiryStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  animal  Animal  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  shelter Shelter @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  notes   EnquiryNote[]
+  events  EnquiryStatusEvent[]
+
+  @@index([animalId])
+  @@index([shelterId, status])
+}
+
+model EnquiryNote {
+  id        String   @id @default(cuid())
+  enquiryId String
+  body      String
+  author    String   @default("Shelter team")
+  createdAt DateTime @default(now())
+
+  enquiry AdoptionEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([enquiryId, createdAt])
+}
+
+model EnquiryStatusEvent {
+  id         String        @id @default(cuid())
+  enquiryId  String
+  fromStatus EnquiryStatus?
+  toStatus   EnquiryStatus
+  actor      String        @default("Shelter team")
+  createdAt  DateTime      @default(now())
+
+  enquiry AdoptionEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([enquiryId, createdAt])
+}
+
+model SavedSearchAlert {
+  id        String   @id @default(cuid())
+  email     String
+  query     String?
+  species   Species?
+  suburb    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([species, suburb])
+}

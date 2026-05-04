@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: paws-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: paws
+      POSTGRES_PASSWORD: paws_dev_password
+      POSTGRES_DB: paws_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - paws_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paws -d paws_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  paws_postgres_data:
