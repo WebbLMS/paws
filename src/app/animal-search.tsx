@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type KeyboardEvent, useActionState, useMemo, useState } from "react";
 
-import { createAdoptionEnquiry, createSavedSearchAlert, type EnquiryResult } from "./actions";
+import { createAdoptionEnquiry, createSavedSearchAlert, recordPublicSearchActivity, type EnquiryResult } from "./actions";
+import { PawIcon, PublicFooter, PublicHeader, type PublicBranding } from "./public-chrome";
 
 export type PublicAnimal = {
   id: string;
@@ -16,26 +18,62 @@ export type PublicAnimal = {
   sex: string;
   size: string;
   shelter: string;
+  shelterSlug: string;
   area: string;
   photo: string;
   traits: string[];
+  health: {
+    vaccinationsUpToDate: boolean;
+    neutered: boolean;
+    microchipped: boolean;
+    tickFleaPreventionActive: boolean;
+  };
   description: string;
   urgent?: boolean;
   recent?: boolean;
 };
 
-const sizeOptions = ["All", "Small", "Medium", "Large", "Extra Large"];
+export type PublicShelter = {
+  id: string;
+  slug: string;
+  name: string;
+  location: string;
+  logoUrl: string | null;
+  animalCount: number;
+};
 
-function PawIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <ellipse cx="7.5" cy="10" rx="2.5" ry="3" />
-      <ellipse cx="16.5" cy="10" rx="2.5" ry="3" />
-      <ellipse cx="4" cy="5.5" rx="2" ry="2.5" />
-      <ellipse cx="20" cy="5.5" rx="2" ry="2.5" />
-      <path d="M12 20c-4 0-7-3-7-5.5S9 10 12 10s7 2 7 4.5S16 20 12 20z" />
-    </svg>
-  );
+const sizeOptions = ["All", "Small", "Medium", "Large", "Extra Large"];
+const healthFilterOptions = [
+  {
+    key: "vaccinationsUpToDate",
+    label: "Vaccinated",
+  },
+  {
+    key: "neutered",
+    label: "Neutered",
+  },
+  {
+    key: "microchipped",
+    label: "Microchipped",
+  },
+  {
+    key: "tickFleaPreventionActive",
+    label: "Tick/Flea protected",
+  },
+] as const;
+
+type FilterSnapshot = {
+  species?: string[];
+  sizes?: string[];
+  areas?: string[];
+  shelters?: string[];
+  healthFilters?: string[];
+  resultsCount?: number;
+};
+
+function toggleSelectedValue(current: string[], value: string) {
+  if (value === "All") return [];
+  return current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
 }
 
 function SearchIcon() {
@@ -48,20 +86,14 @@ function SearchIcon() {
   );
 }
 
-function ShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <circle cx="18" cy="5" r="3" />
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="19" r="3" />
-      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-    </svg>
-  );
-}
-
 function scoreSearch(query: string, animal: PublicAnimal) {
-  const text = `${animal.name} ${animal.species} ${animal.breed} ${animal.description} ${animal.traits.join(" ")} ${animal.shelter} ${animal.area} ${animal.age} ${animal.sex} ${animal.size}`.toLowerCase();
+  const healthText = [
+    animal.health.vaccinationsUpToDate ? "vaccinated vaccinations up to date" : "",
+    animal.health.neutered ? "neutered sterilised spayed" : "",
+    animal.health.microchipped ? "microchipped" : "",
+    animal.health.tickFleaPreventionActive ? "tick flea prevention protected" : "",
+  ].join(" ");
+  const text = `${animal.name} ${animal.species} ${animal.breed} ${animal.description} ${animal.traits.join(" ")} ${healthText} ${animal.shelter} ${animal.area} ${animal.age} ${animal.sex} ${animal.size}`.toLowerCase();
   const words = query.toLowerCase().split(/\s+/).filter((word) => word.length > 1);
   let score = words.reduce((total, word) => total + (text.includes(word) ? 10 : 0), 0);
 
@@ -74,13 +106,32 @@ function scoreSearch(query: string, animal: PublicAnimal) {
   return score;
 }
 
-export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
+export function AnimalSearch({
+  animals,
+  shelters,
+  branding,
+}: {
+  animals: PublicAnimal[];
+  shelters: PublicShelter[];
+  branding?: PublicBranding;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const speciesOptions = useMemo(() => ["All", ...Array.from(new Set(animals.map((animal) => animal.species)))], [animals]);
+  const requestedSpecies = searchParams.get("species");
+  const initialSpecies = requestedSpecies
+    ? (speciesOptions.find((option) => option.toLowerCase() === requestedSpecies.toLowerCase()) ?? "")
+    : "";
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
-  const [species, setSpecies] = useState("All");
-  const [size, setSize] = useState("All");
-  const [area, setArea] = useState("All");
+  const [species, setSpecies] = useState<string[]>(initialSpecies && initialSpecies !== "All" ? [initialSpecies] : []);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [areas, setAreas] = useState<string[]>([]);
+  const [selectedShelters, setSelectedShelters] = useState<string[]>([]);
+  const [healthFilters, setHealthFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [showShelterMenu, setShowShelterMenu] = useState(false);
+  const [shelterSearch, setShelterSearch] = useState("");
   const [showAlert, setShowAlert] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState<PublicAnimal | null>(null);
   const [enquiryState, enquiryAction, isSubmittingEnquiry] = useActionState<EnquiryResult, FormData>(createAdoptionEnquiry, {
@@ -91,8 +142,22 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
     ok: false,
     message: "",
   });
-  const speciesOptions = useMemo(() => ["All", ...Array.from(new Set(animals.map((animal) => animal.species)))], [animals]);
-  const areaOptions = useMemo(() => ["All", ...Array.from(new Set(animals.map((animal) => animal.area)))], [animals]);
+  const areaOptions = useMemo(() => Array.from(new Set(animals.map((animal) => animal.area))).sort(), [animals]);
+  const filteredShelters = useMemo(() => {
+    const search = shelterSearch.trim().toLowerCase();
+    if (!search) return shelters;
+    return shelters.filter((shelter) => `${shelter.name} ${shelter.location}`.toLowerCase().includes(search));
+  }, [shelterSearch, shelters]);
+  const selectedShelterNames = useMemo(
+    () => selectedShelters.map((slug) => shelters.find((shelter) => shelter.slug === slug)?.name).filter(Boolean) as string[],
+    [selectedShelters, shelters],
+  );
+  const shelterFilterLabel =
+    selectedShelterNames.length === 0
+      ? "All shelters"
+      : selectedShelterNames.length === 1
+        ? selectedShelterNames[0]
+        : `${selectedShelterNames.length} shelters`;
 
   const results = useMemo(() => {
     const searched = submittedQuery
@@ -104,40 +169,99 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
       : animals;
 
     return searched.filter((animal) => {
-      if (species !== "All" && animal.species !== species) return false;
-      if (size !== "All" && animal.size !== size) return false;
-      if (area !== "All" && animal.area !== area) return false;
+      if (species.length && !species.includes(animal.species)) return false;
+      if (sizes.length && !sizes.includes(animal.size)) return false;
+      if (areas.length && !areas.includes(animal.area)) return false;
+      if (selectedShelters.length && !selectedShelters.includes(animal.shelterSlug)) return false;
+      if (
+        healthFilters.some((filter) => {
+          const key = filter as keyof PublicAnimal["health"];
+          return !animal.health[key];
+        })
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [animals, area, size, species, submittedQuery]);
+  }, [animals, areas, healthFilters, selectedShelters, sizes, species, submittedQuery]);
 
   const resultLabel = submittedQuery ? `Results for "${submittedQuery}"` : "";
 
+  function logSearchActivity(action: string, nextQuery = submittedQuery, snapshot: FilterSnapshot = {}) {
+    const activeSpecies = snapshot.species ?? species;
+    const activeSizes = snapshot.sizes ?? sizes;
+    const activeAreas = snapshot.areas ?? areas;
+    const activeShelters = snapshot.shelters ?? selectedShelters;
+    const activeHealth = snapshot.healthFilters ?? healthFilters;
+    const formData = new FormData();
+    formData.set("action", action);
+    formData.set("query", nextQuery);
+    formData.set("species", activeSpecies.join(","));
+    formData.set("size", activeSizes.join(","));
+    formData.set("area", activeAreas.join(","));
+    formData.set("shelters", activeShelters.join(","));
+    formData.set("health", activeHealth.join(","));
+    formData.set("results", String(snapshot.resultsCount ?? results.length));
+    void recordPublicSearchActivity(formData);
+  }
+
   function runSearch() {
-    setSubmittedQuery(query.trim());
+    const nextQuery = query.trim();
+    setSubmittedQuery(nextQuery);
+    logSearchActivity("searched", nextQuery);
   }
 
   function quickSearch(value: string) {
     setQuery(value);
     setSubmittedQuery(value);
+    logSearchActivity("quick_search", value);
+  }
+
+  function toggleHealthFilter(key: string) {
+    const next = healthFilters.includes(key) ? healthFilters.filter((filter) => filter !== key) : [...healthFilters, key];
+    setHealthFilters(next);
+    logSearchActivity("filter_changed", submittedQuery, { healthFilters: next });
+  }
+
+  function changeSpecies(option: string) {
+    const next = toggleSelectedValue(species, option);
+    setSpecies(next);
+    logSearchActivity("filter_changed", submittedQuery, { species: next });
+  }
+
+  function changeSize(option: string) {
+    const next = toggleSelectedValue(sizes, option);
+    setSizes(next);
+    logSearchActivity("filter_changed", submittedQuery, { sizes: next });
+  }
+
+  function changeArea(option: string) {
+    const next = toggleSelectedValue(areas, option);
+    setAreas(next);
+    logSearchActivity("filter_changed", submittedQuery, { areas: next });
+  }
+
+  function changeShelter(slug: string) {
+    const next = toggleSelectedValue(selectedShelters, slug);
+    setSelectedShelters(next);
+    logSearchActivity("filter_changed", submittedQuery, { shelters: next });
+  }
+
+  function openAnimalProfile(animal: PublicAnimal) {
+    window.scrollTo(0, 0);
+    router.push(`/animals/${animal.slug}`, { scroll: true });
+  }
+
+  function openAnimalProfileFromKeyboard(event: KeyboardEvent<HTMLElement>, animal: PublicAnimal) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openAnimalProfile(animal);
+    }
   }
 
   return (
     <main className="site-shell">
-      <header className="header">
-        <a className="brand" href="#">
-          <span className="brand-mark">
-            <PawIcon />
-          </span>
-          <span>Paws of Cape Town</span>
-        </a>
-        <nav className="nav" aria-label="Primary navigation">
-          <a href="#animals">Adopt</a>
-          <a href="#shelters">Our Shelters</a>
-          <a href="#stories">Success Stories</a>
-          <Link href="/shelter/login" className="nav-login">Shelter Login</Link>
-        </nav>
-      </header>
+      <PublicHeader active="adopt" branding={branding} />
 
       <section className="hero">
         <div className="hero-inner">
@@ -186,7 +310,12 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
             Filters
           </button>
           {speciesOptions.map((option) => (
-            <button key={option} className={`filter-chip ${species === option ? "active" : ""}`} type="button" onClick={() => setSpecies(option)}>
+            <button
+              key={option}
+              className={`filter-chip ${option === "All" ? (species.length === 0 ? "active" : "") : species.includes(option) ? "active" : ""}`}
+              type="button"
+              onClick={() => changeSpecies(option)}
+            >
               {option === "All" ? "All Animals" : `${option}s`}
             </button>
           ))}
@@ -196,14 +325,84 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
           <div className="filter-row filter-row-extra">
             <span>Size</span>
             {sizeOptions.map((option) => (
-              <button key={option} className={`filter-chip ${size === option ? "active" : ""}`} type="button" onClick={() => setSize(option)}>
+              <button
+                key={option}
+                className={`filter-chip ${option === "All" ? (sizes.length === 0 ? "active" : "") : sizes.includes(option) ? "active" : ""}`}
+                type="button"
+                onClick={() => changeSize(option)}
+              >
                 {option}
               </button>
             ))}
             <span>Area</span>
-            {areaOptions.map((option) => (
-              <button key={option} className={`filter-chip ${area === option ? "active" : ""}`} type="button" onClick={() => setArea(option)}>
+            {["All", ...areaOptions].map((option) => (
+              <button
+                key={option}
+                className={`filter-chip ${option === "All" ? (areas.length === 0 ? "active" : "") : areas.includes(option) ? "active" : ""}`}
+                type="button"
+                onClick={() => changeArea(option)}
+              >
                 {option}
+              </button>
+            ))}
+            <span>Shelter</span>
+            <div className="multi-select-filter">
+              <button
+                className={`filter-chip multi-select-trigger ${selectedShelters.length ? "active" : ""}`}
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={showShelterMenu}
+                onClick={() => setShowShelterMenu((value) => !value)}
+              >
+                {shelterFilterLabel}
+                <span aria-hidden="true">v</span>
+              </button>
+              {showShelterMenu ? (
+                <div className="multi-select-menu" role="listbox" aria-label="Filter by shelter">
+                  <label className="multi-select-search">
+                    <span>Find shelter</span>
+                    <input value={shelterSearch} onChange={(event) => setShelterSearch(event.target.value)} placeholder="Search shelters..." />
+                  </label>
+                  <button
+                    type="button"
+                    className={`multi-select-option ${selectedShelters.length === 0 ? "selected" : ""}`}
+                    onClick={() => changeShelter("All")}
+                  >
+                    <span className="multi-select-check">{selectedShelters.length === 0 ? "✓" : ""}</span>
+                    <span>
+                      <strong>All shelters</strong>
+                      <small>Show listings from every rescue</small>
+                    </span>
+                  </button>
+                  {filteredShelters.map((shelter) => (
+                    <button
+                      type="button"
+                      key={shelter.id}
+                      className={`multi-select-option ${selectedShelters.includes(shelter.slug) ? "selected" : ""}`}
+                      onClick={() => changeShelter(shelter.slug)}
+                    >
+                      <span className="multi-select-check">{selectedShelters.includes(shelter.slug) ? "✓" : ""}</span>
+                      <span>
+                        <strong>{shelter.name}</strong>
+                        <small>
+                          {shelter.location} · {shelter.animalCount} animal{shelter.animalCount === 1 ? "" : "s"}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                  {filteredShelters.length === 0 ? <p className="multi-select-empty">No shelters match that search.</p> : null}
+                </div>
+              ) : null}
+            </div>
+            <span>Health</span>
+            {healthFilterOptions.map((option) => (
+              <button
+                key={option.key}
+                className={`filter-chip ${healthFilters.includes(option.key) ? "active" : ""}`}
+                type="button"
+                onClick={() => toggleHealthFilter(option.key)}
+              >
+                {option.label}
               </button>
             ))}
           </div>
@@ -233,16 +432,21 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
         {results.length ? (
           <div className="animal-grid">
             {results.map((animal, index) => (
-              <article className="animal-card" key={animal.id} style={{ animationDelay: `${index * 70}ms` }}>
+              <article
+                className="animal-card clickable-card"
+                key={animal.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => openAnimalProfile(animal)}
+                onKeyDown={(event) => openAnimalProfileFromKeyboard(event, animal)}
+                style={{ animationDelay: `${index * 70}ms` }}
+              >
                 <div className="animal-image">
                   <Image src={animal.photo} alt={`${animal.name}, a ${animal.breed}`} fill sizes="(max-width: 800px) 100vw, (max-width: 1200px) 50vw, 25vw" />
                   <div className="badges">
                     {animal.urgent ? <span className="badge urgent">Urgent</span> : null}
                     {animal.recent ? <span className="badge recent">New</span> : null}
                   </div>
-                  <Link className="share-button" href={`/animals/${animal.slug}`} aria-label={`Open ${animal.name}'s profile`}>
-                    <ShareIcon />
-                  </Link>
                   <div className="image-title">
                     <h2>{animal.name}</h2>
                     <p>{animal.breed} · {animal.age}</p>
@@ -263,12 +467,24 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
                   <div className="card-footer">
                     <div>
                       <p>Shelter</p>
-                      <strong>{animal.shelter}</strong>
+                      <Link
+                        href={`/shelters/${animal.shelterSlug}`}
+                        prefetch={false}
+                        onClick={(event) => event.stopPropagation()}
+                        className="animal-shelter-link"
+                      >
+                        {animal.shelter}
+                      </Link>
                     </div>
-                    <div className="card-actions">
-                      <Link href={`/animals/${animal.slug}`}>View Profile</Link>
-                      <button type="button" onClick={() => setSelectedAnimal(animal)}>Enquire</button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedAnimal(animal);
+                      }}
+                    >
+                      Enquire
+                    </button>
                   </div>
                 </div>
               </article>
@@ -284,46 +500,48 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
         )}
       </section>
 
-      <section className="shelter-cta" id="shelters">
-        <div>
-          <h2>Are you a registered Cape Town rescue?</h2>
-          <p>List your animals, manage adoption enquiries centrally, and reach a wider audience across the Western Cape.</p>
+      {shelters.length ? (
+        <section className="shelter-strip-section" id="shelters" aria-label="Cape Town rescue shelters">
+          <div className="shelter-strip-heading">
+            <h2>Rescue partners</h2>
+          </div>
+          <div className="shelter-logo-marquee">
+            <div className="shelter-logo-strip">
+              {[...shelters, ...shelters].map((shelter, index) => (
+                <Link
+                  href={`/shelters/${shelter.slug}`}
+                  prefetch={false}
+                  className="shelter-logo-card"
+                  key={`${shelter.id}-${index}`}
+                  aria-hidden={index >= shelters.length ? true : undefined}
+                  tabIndex={index >= shelters.length ? -1 : undefined}
+                >
+                  <span className={shelter.logoUrl ? "shelter-logo-image" : "shelter-logo-mark"}>
+                    {shelter.logoUrl ? (
+                      <Image src={shelter.logoUrl} alt="" fill sizes="72px" />
+                    ) : (
+                      <span>{shelter.name.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </span>
+                  <strong>{shelter.name}</strong>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="shelter-cta">
+        <div className="shelter-cta-inner">
+          <div>
+            <h2>Are you a registered Cape Town rescue?</h2>
+            <p>List your animals, manage adoption enquiries centrally, and reach a wider audience across the Western Cape.</p>
+          </div>
+          <Link href="/shelter/register">Register Shelter</Link>
         </div>
-        <Link href="/shelter/register">Register Shelter</Link>
       </section>
 
-      <footer className="footer">
-        <div className="footer-top">
-          <div>
-            <div className="footer-brand">
-              <PawIcon />
-              <span>Paws of Cape Town</span>
-            </div>
-            <p>A centralised marketplace helping rescue animals across the Western Cape find suitable homes.</p>
-          </div>
-          <div>
-            <h3>For the Public</h3>
-            <a href="#animals">Search Animals</a>
-            <a href="#stories">Adoption Process</a>
-            <a href="#stories">Success Stories</a>
-            <a href="#stories">Foster an Animal</a>
-          </div>
-          <div>
-            <h3>For Shelters</h3>
-            <Link href="/shelter/login">Shelter Login</Link>
-            <Link href="/shelter/register">Partner With Us</Link>
-            <a href="#shelters">Resources</a>
-            <a href="#shelters">Contact Support</a>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>© 2026 Paws of Cape Town. All rights reserved.</p>
-          <div>
-            <a href="#privacy">Privacy Policy</a>
-            <a href="#terms">Terms of Service</a>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter branding={branding} />
 
       {selectedAnimal ? (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setSelectedAnimal(null)}>
@@ -395,8 +613,8 @@ export function AnimalSearch({ animals }: { animals: PublicAnimal[] }) {
             ) : (
               <form action={alertAction} className="enquiry-form">
                 <input type="hidden" name="query" value={submittedQuery || query} />
-                <input type="hidden" name="species" value={species} />
-                <input type="hidden" name="suburb" value={area} />
+                <input type="hidden" name="species" value={species.length === 1 ? species[0] : ""} />
+                <input type="hidden" name="suburb" value={areas.length === 1 ? areas[0] : ""} />
                 <label>
                   <span>Email Address</span>
                   <input name="email" type="email" required autoComplete="email" />

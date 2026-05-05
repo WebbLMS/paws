@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { AnimalSize, AnimalStatus, Sex, Species } from "@/generated/prisma/enums";
 import { getActiveShelter, getCurrentSession } from "@/lib/active-shelter";
 import { prisma } from "@/lib/prisma";
-import { PhotoViewer } from "@/app/photo-viewer";
 
 import { updateAnimalListing } from "../../../actions";
+import { PhotoUploadField } from "../../photo-upload-field";
+import { popularAnimalTraits } from "../../trait-options";
+import { ShelterPortalShell } from "../../../portal-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,17 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
           shelterId: shelter.id,
         },
         include: {
+          _count: {
+            select: {
+              profileViews: true,
+            },
+          },
+          profileViews: {
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 5,
+          },
           enquiries: {
             orderBy: {
               createdAt: "desc",
@@ -79,11 +92,16 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
     );
   }
 
+  const traitOptions = [
+    ...popularAnimalTraits,
+    ...animal.traits.filter((trait) => !popularAnimalTraits.some((option) => option.toLowerCase() === trait.toLowerCase())),
+  ];
+
   return (
-    <main className="dashboard-shell">
-      <section className="form-page animal-management-page">
-        <Link href="/shelter" className="dashboard-back">
-          Back to dashboard
+    <ShelterPortalShell shelter={shelter} active="animals">
+      <section className="portal-form-page animal-management-page">
+        <Link href="/shelter/animals" className="dashboard-back">
+          Back to My Animals
         </Link>
         <div className="form-card">
           <div className="form-heading split-heading">
@@ -91,35 +109,14 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
               <h1>Edit {animal.name}</h1>
               <p>Manage the listing details and adoption availability for {shelter.name}.</p>
             </div>
-            <span className="status-pill">{displayEnum(animal.status)}</span>
+            <div className="animal-admin-stats">
+              <span className="status-pill">{displayEnum(animal.status)}</span>
+              <span className="status-pill">{animal._count.profileViews} views</span>
+            </div>
           </div>
 
           <form action={updateAnimalListing} className="listing-form">
             <input type="hidden" name="animalId" value={animal.id} />
-
-            <div className="photo-management-grid">
-              <PhotoViewer animalName={animal.name} photos={[animal.profileImageUrl, ...animal.imageUrls].filter((photo): photo is string => Boolean(photo))} />
-              <div className="photo-fields">
-                <label>
-                  <span>Primary Photo URL</span>
-                  <input
-                    name="profileImageUrl"
-                    type="url"
-                    defaultValue={animal.profileImageUrl ?? ""}
-                    placeholder="https://images.unsplash.com/..."
-                  />
-                </label>
-                <label>
-                  <span>Additional Photo URLs</span>
-                  <textarea
-                    name="imageUrls"
-                    rows={7}
-                    defaultValue={animal.imageUrls.join("\n")}
-                    placeholder="One photo URL per line. Remove a line to delete that photo."
-                  />
-                </label>
-              </div>
-            </div>
 
             <div className="form-grid">
               <label>
@@ -178,10 +175,25 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
               </label>
             </div>
 
-            <label>
-              <span>Traits</span>
-              <input name="traits" defaultValue={animal.traits.join(", ")} placeholder="Gentle, playful, good with kids" />
-            </label>
+            <div className="wide-field">
+              <div className="field-heading">
+                <span>Traits</span>
+                <em>Select the qualities adopters commonly filter for. Existing custom traits are kept below.</em>
+              </div>
+              <div className="trait-select-grid">
+                {traitOptions.map((trait) => (
+                  <label className="trait-select-chip" key={trait}>
+                    <input
+                      name="traits"
+                      type="checkbox"
+                      value={trait}
+                      defaultChecked={animal.traits.some((selectedTrait) => selectedTrait.toLowerCase() === trait.toLowerCase())}
+                    />
+                    <span>{trait}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <label>
               <span>Summary</span>
               <input name="summary" defaultValue={animal.summary ?? ""} placeholder="A short public card description." />
@@ -195,13 +207,54 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
                 placeholder="Longer notes for the animal profile."
               />
             </label>
+
+            <div className="wide-field">
+              <div className="field-heading">
+                <span>Health & Medical</span>
+                <em>These show on the public animal profile and can be used as search filters.</em>
+              </div>
+              <div className="health-checkbox-grid">
+                <label className="checkbox-row">
+                  <input name="vaccinationsUpToDate" type="checkbox" defaultChecked={animal.vaccinationsUpToDate} />
+                  <span>Vaccinations up to date</span>
+                </label>
+                <label className="checkbox-row">
+                  <input name="neutered" type="checkbox" defaultChecked={animal.neutered} />
+                  <span>Neutered</span>
+                </label>
+                <label className="checkbox-row">
+                  <input name="microchipped" type="checkbox" defaultChecked={animal.microchipped} />
+                  <span>Microchipped</span>
+                </label>
+                <label className="checkbox-row">
+                  <input name="tickFleaPreventionActive" type="checkbox" defaultChecked={animal.tickFleaPreventionActive} />
+                  <span>Tick/Flea prevention active</span>
+                </label>
+              </div>
+            </div>
+
             <label className="checkbox-row">
               <input name="isUrgent" type="checkbox" defaultChecked={animal.isUrgent} />
               <span>Mark as urgent</span>
             </label>
 
+            <div className="wide-field compact-photo-field">
+              <div className="field-heading">
+                <span>Animal Photos</span>
+                <em>Keep this tight: upload photos, remove weak images, and set the card/profile primary.</em>
+              </div>
+              <PhotoUploadField
+                existingPhotos={[animal.profileImageUrl, ...animal.imageUrls]
+                  .filter((photo): photo is string => Boolean(photo))
+                  .map((url) => ({
+                    url,
+                    isPrimary: url === animal.profileImageUrl,
+                  }))}
+              />
+            </div>
+
             <div className="form-actions">
-              <Link href="/shelter">Cancel</Link>
+              <Link href="/shelter/animals">Cancel</Link>
               <button type="submit">Save Changes</button>
             </div>
           </form>
@@ -211,10 +264,21 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
           <div className="panel-heading">
             <div>
               <h2>Activity</h2>
-              <p>Enquiries and latest CRM movement for this animal.</p>
+              <p>Enquiries, profile views, and latest CRM movement for this animal.</p>
             </div>
-            <span className="status-pill">{animal.enquiries.length} enquiries</span>
+            <span className="status-pill">{animal.enquiries.length} enquiries · {animal._count.profileViews} views</span>
           </div>
+
+          {animal.profileViews.length ? (
+            <div className="animal-view-strip">
+              {animal.profileViews.map((view) => (
+                <div key={view.id}>
+                  <strong>Profile view</strong>
+                  <span>{formatDate(view.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {animal.enquiries.length ? (
             <div className="animal-activity-list">
@@ -264,6 +328,6 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
           )}
         </article>
       </section>
-    </main>
+    </ShelterPortalShell>
   );
 }

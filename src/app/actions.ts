@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 
 import { AnimalStatus, ShelterStatus, Species, UserRole } from "@/generated/prisma/enums";
 import { auth } from "@/lib/auth";
+import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
+import { recordPlatformActivity } from "@/lib/platform-activity";
 import { prisma } from "@/lib/prisma";
 
 export type EnquiryResult = {
@@ -41,6 +43,11 @@ function nullableUrl(value: string) {
   } catch {
     return null;
   }
+}
+
+function appUrl(path = "") {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
+  return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
 async function uniqueShelterSlug(name: string) {
@@ -97,6 +104,13 @@ export async function createAdoptionEnquiry(_: EnquiryResult, formData: FormData
       id: true,
       shelterId: true,
       name: true,
+      slug: true,
+      shelter: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -117,6 +131,60 @@ export async function createAdoptionEnquiry(_: EnquiryResult, formData: FormData
       message: message || null,
     },
   });
+
+  await recordPlatformActivity({
+    category: "enquiry",
+    action: "created",
+    summary: `${name} enquired about ${animal.name} at ${animal.shelter.name}.`,
+    detail: message || null,
+    actorName: name,
+    actorEmail: email,
+    path: `/animals/${animal.slug}`,
+    metadata: {
+      animalId: animal.id,
+      shelterId: animal.shelterId,
+      phone: phone || null,
+    },
+  });
+
+  const animalUrl = appUrl(`/animals/${animal.slug}`);
+  await Promise.allSettled([
+    sendPlatformEmail({
+      to: animal.shelter.email,
+      replyTo: email,
+      subject: `New adoption enquiry for ${animal.name}`,
+      text: [
+        `A new enquiry was submitted for ${animal.name}.`,
+        `Name: ${name}`,
+        `Email: ${email}`,
+        phone ? `Phone: ${phone}` : "Phone: Not supplied",
+        message ? `Message: ${message}` : "Message: Not supplied",
+        `View the listing: ${animalUrl}`,
+      ].join("\n\n"),
+      html: paragraphsToHtml([
+        `A new enquiry was submitted for ${animal.name}.`,
+        `Name: ${name}`,
+        `Email: ${email}`,
+        phone ? `Phone: ${phone}` : "Phone: Not supplied",
+        message ? `Message: ${message}` : "Message: Not supplied",
+        `View the listing: ${animalUrl}`,
+      ]),
+    }),
+    sendPlatformEmail({
+      to: email,
+      subject: `Your enquiry about ${animal.name}`,
+      text: [
+        `Thanks ${name}, your enquiry about ${animal.name} has been sent to ${animal.shelter.name}.`,
+        "The shelter handles all adoption conversations and placements directly.",
+        `Animal profile: ${animalUrl}`,
+      ].join("\n\n"),
+      html: paragraphsToHtml([
+        `Thanks ${name}, your enquiry about ${animal.name} has been sent to ${animal.shelter.name}.`,
+        "The shelter handles all adoption conversations and placements directly.",
+        `Animal profile: ${animalUrl}`,
+      ]),
+    }),
+  ]);
 
   return {
     ok: true,
@@ -156,6 +224,37 @@ export async function createSavedSearchAlert(_: EnquiryResult, formData: FormDat
       species,
       suburb: suburb && suburb !== "All" ? suburb : null,
     },
+  });
+
+  await recordPlatformActivity({
+    category: "search",
+    action: "alert_created",
+    summary: `${email} saved a search alert.`,
+    actorEmail: email,
+    metadata: {
+      query: query || null,
+      species,
+      suburb: suburb && suburb !== "All" ? suburb : null,
+    },
+  });
+
+  await sendPlatformEmail({
+    to: email,
+    subject: "Your Paws of Cape Town search alert is active",
+    text: [
+      "Your rescue animal search alert has been saved.",
+      query ? `Search: ${query}` : "Search: All animals",
+      species ? `Species: ${species.toLowerCase()}` : "Species: Any",
+      suburb && suburb !== "All" ? `Area: ${suburb}` : "Area: Any",
+      "PAWS will use this alert to track matching listings.",
+    ].join("\n\n"),
+    html: paragraphsToHtml([
+      "Your rescue animal search alert has been saved.",
+      query ? `Search: ${query}` : "Search: All animals",
+      species ? `Species: ${species.toLowerCase()}` : "Species: Any",
+      suburb && suburb !== "All" ? `Area: ${suburb}` : "Area: Any",
+      "PAWS will use this alert to track matching listings.",
+    ]),
   });
 
   return {
@@ -226,6 +325,8 @@ export async function registerShelter(_: EnquiryResult, formData: FormData): Pro
     },
     select: {
       id: true,
+      name: true,
+      email: true,
     },
   });
 
@@ -260,5 +361,77 @@ export async function registerShelter(_: EnquiryResult, formData: FormData): Pro
     };
   }
 
+  await recordPlatformActivity({
+    category: "shelter",
+    action: "registration_submitted",
+    summary: `${shelter.name} submitted a registration request.`,
+    actorName: primaryName,
+    actorEmail: primaryEmail,
+    metadata: {
+      shelterId: shelter.id,
+      shelterEmail: shelter.email,
+      suburb: suburb || null,
+      city,
+    },
+  });
+
+  await Promise.allSettled([
+    sendPlatformEmail({
+      to: primaryEmail,
+      subject: `${shelter.name} registration received`,
+      text: [
+        `Thanks ${primaryName}, ${shelter.name} has been submitted for review.`,
+        "You can sign in, but the public shelter profile and available listings will only show once the PAWS admin approves the shelter.",
+        `Shelter login: ${appUrl("/shelter/login")}`,
+      ].join("\n\n"),
+      html: paragraphsToHtml([
+        `Thanks ${primaryName}, ${shelter.name} has been submitted for review.`,
+        "You can sign in, but the public shelter profile and available listings will only show once the PAWS admin approves the shelter.",
+        `Shelter login: ${appUrl("/shelter/login")}`,
+      ]),
+    }),
+    shelter.email !== primaryEmail
+      ? sendPlatformEmail({
+          to: shelter.email,
+          subject: `${shelter.name} registration received`,
+          text: [
+            `${shelter.name} has been submitted for review on Paws of Cape Town.`,
+            `Primary contact: ${primaryName} <${primaryEmail}>`,
+          ].join("\n\n"),
+          html: paragraphsToHtml([
+            `${shelter.name} has been submitted for review on Paws of Cape Town.`,
+            `Primary contact: ${primaryName} <${primaryEmail}>`,
+          ]),
+        })
+      : Promise.resolve(),
+  ]);
+
   redirect("/shelter");
+}
+
+export async function recordPublicSearchActivity(formData: FormData) {
+  const query = getRequiredValue(formData, "query");
+  const species = getRequiredValue(formData, "species");
+  const size = getRequiredValue(formData, "size");
+  const area = getRequiredValue(formData, "area");
+  const shelters = getRequiredValue(formData, "shelters");
+  const health = getRequiredValue(formData, "health");
+  const results = Number.parseInt(getRequiredValue(formData, "results"), 10);
+  const action = getRequiredValue(formData, "action") || "searched";
+
+  await recordPlatformActivity({
+    category: "search",
+    action,
+    summary: query ? `Public visitor searched "${query}".` : "Public visitor changed animal filters.",
+    actorName: "Public visitor",
+    metadata: {
+      query: query || null,
+      species,
+      size,
+      area,
+      shelters: shelters ? shelters.split(",").filter(Boolean) : [],
+      health: health ? health.split(",").filter(Boolean) : [],
+      results: Number.isFinite(results) ? results : null,
+    },
+  });
 }

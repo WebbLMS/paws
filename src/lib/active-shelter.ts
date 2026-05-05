@@ -1,6 +1,7 @@
 import "server-only";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +22,13 @@ export async function getShelterContext() {
     },
   });
 
-  if (!user?.shelter) return null;
+  if (!user || user.suspendedAt) return null;
+
+  if (user.passwordResetRequired) {
+    redirect("/shelter/reset-password");
+  }
+
+  if (!user.shelter) return null;
 
   return {
     session,

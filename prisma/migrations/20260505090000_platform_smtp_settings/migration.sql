@@ -1,0 +1,11 @@
+ALTER TABLE "PlatformSettings"
+  ADD COLUMN "smtpEnabled" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "smtpHost" TEXT,
+  ADD COLUMN "smtpPort" INTEGER NOT NULL DEFAULT 587,
+  ADD COLUMN "smtpSecurity" TEXT NOT NULL DEFAULT 'TLS',
+  ADD COLUMN "smtpAuthType" TEXT NOT NULL DEFAULT 'LOGIN',
+  ADD COLUMN "smtpUsername" TEXT,
+  ADD COLUMN "smtpPassword" TEXT,
+  ADD COLUMN "smtpSessionLimit" INTEGER NOT NULL DEFAULT 3,
+  ADD COLUMN "smtpNoReplyEmail" TEXT,
+  ADD COLUMN "smtpNoReplyName" TEXT NOT NULL DEFAULT 'Paws of Cape Town';

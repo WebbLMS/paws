@@ -22,6 +22,7 @@ enum ShelterStatus {
   PENDING
   APPROVED
   REJECTED
+  SUSPENDED
 }
 
 enum AnimalStatus {
@@ -62,6 +63,11 @@ enum EnquiryStatus {
   CLOSED
 }
 
+enum ProfileViewType {
+  ANIMAL
+  SHELTER
+}
+
 model Shelter {
   id          String   @id @default(cuid())
   name        String
@@ -72,6 +78,9 @@ model Shelter {
   websiteUrl  String?
   facebookUrl String?
   instagramUrl String?
+  coverImageUrl String?
+  logoImageUrl String?
+  registrationNumber String?
   suburb      String?
   city        String   @default("Cape Town")
   province    String   @default("Western Cape")
@@ -82,6 +91,7 @@ model Shelter {
   users     User[]
   animals   Animal[]
   enquiries AdoptionEnquiry[]
+  profileViews ProfileView[]
 }
 
 model User {
@@ -92,12 +102,15 @@ model User {
   image         String?
   role          UserRole @default(SHELTER_STAFF)
   shelterId     String?
+  suspendedAt   DateTime?
+  passwordResetRequired Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   shelter  Shelter?  @relation(fields: [shelterId], references: [id], onDelete: SetNull)
   sessions Session[]
   accounts Account[]
+  activities PlatformActivity[]
 
   @@index([shelterId])
 }
@@ -156,6 +169,10 @@ model Animal {
   summary         String?
   description     String?
   traits          String[]
+  vaccinationsUpToDate Boolean @default(false)
+  neutered        Boolean      @default(false)
+  microchipped    Boolean      @default(false)
+  tickFleaPreventionActive Boolean @default(false)
   isUrgent        Boolean      @default(false)
   suburb          String?
   city            String       @default("Cape Town")
@@ -168,6 +185,7 @@ model Animal {
 
   shelter   Shelter           @relation(fields: [shelterId], references: [id], onDelete: Cascade)
   enquiries AdoptionEnquiry[]
+  profileViews ProfileView[]
 
   @@unique([shelterId, slug])
   @@index([species, status])
@@ -233,4 +251,59 @@ model SavedSearchAlert {
 
   @@index([email])
   @@index([species, suburb])
+}
+
+model ProfileView {
+  id        String          @id @default(cuid())
+  shelterId String
+  animalId  String?
+  type      ProfileViewType
+  path      String?
+  createdAt DateTime        @default(now())
+
+  shelter Shelter @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  animal  Animal? @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@index([shelterId, type, createdAt])
+  @@index([animalId, createdAt])
+}
+
+model PlatformSettings {
+  id                    String   @id @default("platform")
+  googleAnalyticsId     String?
+  siteLogoUrl           String?
+  siteIconUrl           String?
+  smtpEnabled           Boolean  @default(false)
+  smtpHost              String?
+  smtpPort              Int      @default(587)
+  smtpSecurity          String   @default("TLS")
+  smtpAuthType          String   @default("LOGIN")
+  smtpUsername          String?
+  smtpPassword          String?
+  smtpSessionLimit      Int      @default(3)
+  smtpNoReplyEmail      String?
+  smtpNoReplyName       String   @default("Paws of Cape Town")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model PlatformActivity {
+  id         String   @id @default(cuid())
+  category   String
+  action     String
+  summary    String
+  detail     String?
+  actorName  String?
+  actorEmail String?
+  userId     String?
+  path       String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([category, action, createdAt])
+  @@index([actorEmail, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }

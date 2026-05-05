@@ -5,6 +5,9 @@ import { AnimalSize, Sex, Species } from "@/generated/prisma/enums";
 import { getActiveShelter, getCurrentSession } from "@/lib/active-shelter";
 
 import { createAnimalListing } from "../../actions";
+import { ShelterPortalShell } from "../../portal-shell";
+import { PhotoUploadField } from "../photo-upload-field";
+import { popularAnimalTraits } from "../trait-options";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +18,28 @@ export default async function NewAnimalPage() {
     redirect("/shelter/login");
   }
 
+  if (!shelter) {
+    return (
+      <main className="dashboard-shell">
+        <section className="dashboard-empty">
+          <h1>No shelter access</h1>
+          <p>This account is not linked to a shelter yet.</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="dashboard-shell">
-      <section className="form-page">
-        <Link href="/shelter" className="dashboard-back">
-          Back to dashboard
+    <ShelterPortalShell shelter={shelter} active="animals">
+      <section className="portal-form-page">
+        <Link href="/shelter/animals" className="dashboard-back">
+          Back to My Animals
         </Link>
         <div className="form-card">
           <div className="form-heading">
             <div>
               <h1>Add Animal</h1>
-              <p>{shelter ? `Create a listing for ${shelter.name}.` : "This account is not linked to a shelter yet."}</p>
+              <p>Create a listing for {shelter.name}.</p>
             </div>
           </div>
 
@@ -75,21 +89,22 @@ export default async function NewAnimalPage() {
                 <span>Suburb</span>
                 <input name="suburb" placeholder={shelter?.suburb ?? "Cape Town"} />
               </label>
-              <label>
-                <span>Photo URL</span>
-                <input name="profileImageUrl" type="url" placeholder="https://images.unsplash.com/..." />
-              </label>
             </div>
 
-            <label>
-              <span>Additional Photo URLs</span>
-              <textarea name="imageUrls" rows={4} placeholder="One photo URL per line." />
-            </label>
-
-            <label>
-              <span>Traits</span>
-              <input name="traits" placeholder="Gentle, playful, good with kids" />
-            </label>
+            <div className="wide-field">
+              <div className="field-heading">
+                <span>Traits</span>
+                <em>Select the qualities adopters commonly filter for. Keep it honest and specific.</em>
+              </div>
+              <div className="trait-select-grid">
+                {popularAnimalTraits.map((trait) => (
+                  <label className="trait-select-chip" key={trait}>
+                    <input name="traits" type="checkbox" value={trait} />
+                    <span>{trait}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <label>
               <span>Summary</span>
               <input name="summary" placeholder="A short public card description." />
@@ -98,18 +113,52 @@ export default async function NewAnimalPage() {
               <span>Description</span>
               <textarea name="description" rows={5} placeholder="Longer notes for the animal profile." />
             </label>
+
+            <div className="wide-field">
+              <div className="field-heading">
+                <span>Health & Medical</span>
+                <em>These show on the public animal profile and can be used as search filters.</em>
+              </div>
+              <div className="health-checkbox-grid">
+                <label className="checkbox-row">
+                  <input name="vaccinationsUpToDate" type="checkbox" />
+                  <span>Vaccinations up to date</span>
+                </label>
+                <label className="checkbox-row">
+                  <input name="neutered" type="checkbox" />
+                  <span>Neutered</span>
+                </label>
+                <label className="checkbox-row">
+                  <input name="microchipped" type="checkbox" />
+                  <span>Microchipped</span>
+                </label>
+                <label className="checkbox-row">
+                  <input name="tickFleaPreventionActive" type="checkbox" />
+                  <span>Tick/Flea prevention active</span>
+                </label>
+              </div>
+            </div>
+
             <label className="checkbox-row">
               <input name="isUrgent" type="checkbox" />
               <span>Mark as urgent</span>
             </label>
 
+            <div className="wide-field compact-photo-field">
+              <div className="field-heading">
+                <span>Animal Photos</span>
+                <em>Upload photos, then choose the primary image shown on public cards and profiles.</em>
+              </div>
+              <PhotoUploadField />
+            </div>
+
             <div className="form-actions">
-              <Link href="/shelter">Cancel</Link>
+              <Link href="/shelter/animals">Cancel</Link>
               <button type="submit" disabled={!shelter}>Create Listing</button>
             </div>
           </form>
         </div>
       </section>
-    </main>
+    </ShelterPortalShell>
   );
 }

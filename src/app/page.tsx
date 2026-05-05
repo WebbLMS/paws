@@ -1,7 +1,8 @@
 import { AnimalStatus, ShelterStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { getPublicBranding } from "@/lib/platform-settings";
 
-import { AnimalSearch, type PublicAnimal } from "./animal-search";
+import { AnimalSearch, type PublicAnimal, type PublicShelter } from "./animal-search";
 
 export const dynamic = "force-dynamic";
 
@@ -55,17 +56,55 @@ async function getAnimals(): Promise<PublicAnimal[]> {
     sex: displayEnum(animal.sex),
     size: displayEnum(animal.size),
     shelter: animal.shelter.name,
+    shelterSlug: animal.shelter.slug,
     area: animal.suburb ?? animal.shelter.suburb ?? animal.city,
     photo: animal.profileImageUrl ?? "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=900&h=900&fit=crop",
     traits: animal.traits,
+    health: {
+      vaccinationsUpToDate: animal.vaccinationsUpToDate,
+      neutered: animal.neutered,
+      microchipped: animal.microchipped,
+      tickFleaPreventionActive: animal.tickFleaPreventionActive,
+    },
     description: animal.summary ?? animal.description ?? "Contact the shelter to learn more about this animal.",
     urgent: animal.isUrgent,
     recent: animal.publishedAt ? animal.publishedAt >= recentCutoff : false,
   }));
 }
 
-export default async function Home() {
-  const animals = await getAnimals();
+async function getShelters(): Promise<PublicShelter[]> {
+  const shelters = await prisma.shelter.findMany({
+    where: {
+      status: ShelterStatus.APPROVED,
+    },
+    include: {
+      _count: {
+        select: {
+          animals: {
+            where: {
+              status: AnimalStatus.AVAILABLE,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
 
-  return <AnimalSearch animals={animals} />;
+  return shelters.map((shelter) => ({
+    id: shelter.id,
+    slug: shelter.slug,
+    name: shelter.name,
+    location: shelter.suburb ?? shelter.city,
+    logoUrl: shelter.logoImageUrl,
+    animalCount: shelter._count.animals,
+  }));
+}
+
+export default async function Home() {
+  const [animals, shelters, branding] = await Promise.all([getAnimals(), getShelters(), getPublicBranding()]);
+
+  return <AnimalSearch animals={animals} shelters={shelters} branding={branding} />;
 }

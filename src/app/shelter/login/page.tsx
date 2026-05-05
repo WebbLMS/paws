@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { getCurrentSession } from "@/lib/active-shelter";
+import { getActiveShelter, getCurrentSession } from "@/lib/active-shelter";
 
 import { LoginForm } from "./login-form";
+import { SignOutButton } from "../sign-out-button";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShelterLoginPage() {
-  const session = await getCurrentSession();
+  const [session, shelter] = await Promise.all([getCurrentSession(), getActiveShelter()]);
 
-  if (session) {
+  if (session && shelter) {
     redirect("/shelter");
   }
 
@@ -26,7 +27,15 @@ export default async function ShelterLoginPage() {
             Sign in with your shelter&apos;s registered email. New accounts are linked automatically when the email matches a shelter record.
           </p>
         </div>
-        <LoginForm />
+        {session ? (
+          <div className="auth-card auth-session-card">
+            <p className="form-error" role="alert">
+              This signed-in account is not linked to a shelter. Sign out, then use the email address registered on the shelter record.
+            </p>
+            <SignOutButton />
+          </div>
+        ) : null}
+        {!session ? <LoginForm /> : null}
       </section>
     </main>
   );

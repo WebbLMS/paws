@@ -1,0 +1,2 @@
+ALTER TABLE "User" ADD COLUMN "suspendedAt" TIMESTAMP(3);
+ALTER TABLE "User" ADD COLUMN "passwordResetRequired" BOOLEAN NOT NULL DEFAULT false;

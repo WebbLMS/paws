@@ -1,0 +1,27 @@
+import { revalidatePath } from "next/cache";
+import { NextRequest, NextResponse } from "next/server";
+
+import { expiredAdminSessionCookieHeaders } from "@/lib/admin-auth";
+
+function logout(request: NextRequest) {
+  revalidatePath("/admin");
+  revalidatePath("/admin/login");
+
+  const response = NextResponse.redirect(new URL("/admin/login", request.url), {
+    status: 303,
+  });
+
+  for (const cookie of expiredAdminSessionCookieHeaders()) {
+    response.headers.append("Set-Cookie", cookie);
+  }
+
+  return response;
+}
+
+export function GET(request: NextRequest) {
+  return logout(request);
+}
+
+export function POST(request: NextRequest) {
+  return logout(request);
+}
