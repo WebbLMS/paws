@@ -118,8 +118,12 @@ export function PublicFooter({ branding }: { branding?: PublicBranding }) {
       <div className="footer-bottom">
         <p>© 2026 Paws of Cape Town. All rights reserved.</p>
         <div>
-          <Link href="/privacy">Privacy Policy</Link>
-          <Link href="/terms">Terms of Service</Link>
+          <Link href="/privacy" scroll>
+            Privacy Policy
+          </Link>
+          <Link href="/terms" scroll>
+            Terms of Service
+          </Link>
         </div>
       </div>
     </footer>

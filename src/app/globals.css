@@ -1099,7 +1099,7 @@ svg {
   background:
     radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 34rem),
     linear-gradient(180deg, #f8fafc 0%, #ffffff 42%);
-  padding: 72px 6vw 90px;
+  padding: 88px 6vw 90px;
 }
 
 .legal-hero {
@@ -6160,7 +6160,7 @@ svg {
   }
 
   .legal-page {
-    padding: 46px 18px 62px;
+    padding: 64px 18px 62px;
   }
 
   .legal-hero {
