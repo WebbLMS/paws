@@ -270,6 +270,7 @@ model ProfileView {
 
 model PlatformSettings {
   id                    String   @id @default("platform")
+  siteName              String   @default("Paws of Cape Town")
   googleAnalyticsId     String?
   siteLogoUrl           String?
   siteIconUrl           String?

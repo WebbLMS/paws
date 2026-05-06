@@ -2,17 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PublicFooter, PublicHeader } from "@/app/public-chrome";
+import { defaultSiteName } from "@/lib/branding";
 import { getPublicBranding } from "@/lib/platform-settings";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Terms of Service | Paws of Cape Town",
-  description: "Terms for using the Paws of Cape Town animal adoption marketplace.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getPublicBranding();
+  const siteName = branding.siteName ?? defaultSiteName;
+
+  return {
+    title: `Terms of Service | ${siteName}`,
+    description: `Terms for using the ${siteName} animal adoption marketplace.`,
+  };
+}
 
 export default async function TermsPage() {
   const branding = await getPublicBranding();
+  const siteName = branding.siteName ?? defaultSiteName;
 
   return (
     <>
@@ -20,7 +27,7 @@ export default async function TermsPage() {
       <main className="legal-page">
         <section className="legal-hero">
           <p className="eyebrow">Terms of Service</p>
-          <h1>Using Paws of Cape Town</h1>
+          <h1>Using {siteName}</h1>
           <p>
             These terms explain the basic rules for using PAWS as a public animal listing platform for Cape Town and the
             Western Cape.
@@ -32,7 +39,7 @@ export default async function TermsPage() {
           <article className="legal-card">
             <h2>PAWS is a listing platform</h2>
             <p>
-              Paws of Cape Town is not a shelter, rescue organisation, adoption agency, veterinary provider, or animal
+              {siteName} is not a shelter, rescue organisation, adoption agency, veterinary provider, or animal
               placement service. PAWS does not own animals, assess adopters, approve applications, handle animal
               enquiries, or arrange placements.
             </p>

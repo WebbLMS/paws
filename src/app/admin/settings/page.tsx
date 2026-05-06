@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { requireAdminSession } from "@/lib/admin-auth";
+import { defaultSiteName } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
 
 import { updatePlatformSettings } from "../actions";
@@ -79,6 +80,10 @@ export default async function AdminSettingsPage({
             <section className="admin-form-section">
               <h3>Branding</h3>
               <div className="admin-form-grid">
+                <label className="wide-field">
+                  <span>Site Name</span>
+                  <input name="siteName" defaultValue={settings?.siteName ?? defaultSiteName} />
+                </label>
                 <label>
                   <span>Site Logo</span>
                   <input name="siteLogo" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/x-icon" />
@@ -169,7 +174,7 @@ export default async function AdminSettingsPage({
                 </label>
                 <label className="wide-field">
                   <span>Email Display Name</span>
-                  <input name="smtpNoReplyName" defaultValue={settings?.smtpNoReplyName ?? "Paws of Cape Town"} />
+                  <input name="smtpNoReplyName" defaultValue={settings?.smtpNoReplyName ?? defaultSiteName} />
                 </label>
               </div>
 

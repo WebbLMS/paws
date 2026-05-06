@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { defaultSiteName } from "@/lib/branding";
 
 export type PublicBranding = {
+  siteName?: string | null;
   siteLogoUrl?: string | null;
   siteIconUrl?: string | null;
 };
@@ -45,6 +47,7 @@ export function PublicHeader({ active, branding }: { active?: "adopt" | "shelter
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const [isPending, startTransition] = useTransition();
+  const siteName = branding?.siteName ?? defaultSiteName;
 
   function signOut() {
     startTransition(async () => {
@@ -60,7 +63,7 @@ export function PublicHeader({ active, branding }: { active?: "adopt" | "shelter
           <span className="brand-mark">
             <BrandMark branding={branding} />
           </span>
-          <span>Paws of Cape Town</span>
+          <span>{siteName}</span>
         </Link>
         <nav className="nav" aria-label="Primary navigation">
           <Link href="/#animals" className={active === "adopt" ? "active-nav" : ""}>
@@ -88,6 +91,8 @@ export function PublicHeader({ active, branding }: { active?: "adopt" | "shelter
 }
 
 export function PublicFooter({ branding }: { branding?: PublicBranding }) {
+  const siteName = branding?.siteName ?? defaultSiteName;
+
   return (
     <footer className="footer">
       <div className="footer-top">
@@ -96,7 +101,7 @@ export function PublicFooter({ branding }: { branding?: PublicBranding }) {
             <span className="footer-brand-mark">
               <BrandMark branding={branding} size={24} />
             </span>
-            <span>Paws of Cape Town</span>
+            <span>{siteName}</span>
           </div>
           <p>A centralised marketplace helping rescue animals across the Western Cape find suitable homes.</p>
         </div>
@@ -116,7 +121,7 @@ export function PublicFooter({ branding }: { branding?: PublicBranding }) {
         </div>
       </div>
       <div className="footer-bottom">
-        <p>© 2026 Paws of Cape Town. All rights reserved.</p>
+        <p>© 2026 {siteName}. All rights reserved.</p>
         <div>
           <Link href="/privacy" scroll>
             Privacy Policy

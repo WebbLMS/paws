@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
+import { getSiteName } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
 export type PasswordResetRequestResult = {
@@ -75,6 +76,7 @@ export async function requestPasswordResetEmail(
   _: PasswordResetRequestResult,
   formData: FormData,
 ): Promise<PasswordResetRequestResult> {
+  const siteName = await getSiteName();
   const email = getValue(formData, "email").toLowerCase();
 
   if (!isValidEmail(email)) {
@@ -143,7 +145,7 @@ export async function requestPasswordResetEmail(
 
   await sendPlatformEmail({
     to: user.email,
-    subject: "Reset your Paws of Cape Town password",
+    subject: `Reset your ${siteName} password`,
     text: [
       `Hi ${user.name},`,
       "We received a request to reset your PAWS shelter account password.",

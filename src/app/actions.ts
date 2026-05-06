@@ -6,6 +6,7 @@ import { AnimalStatus, ShelterStatus, Species, UserRole } from "@/generated/pris
 import { auth } from "@/lib/auth";
 import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
 import { recordPlatformActivity } from "@/lib/platform-activity";
+import { getSiteName } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
 export type EnquiryResult = {
@@ -198,6 +199,7 @@ function parseSpecies(value: string) {
 }
 
 export async function createSavedSearchAlert(_: EnquiryResult, formData: FormData): Promise<EnquiryResult> {
+  const siteName = await getSiteName();
   const email = getRequiredValue(formData, "email");
   const query = getRequiredValue(formData, "query");
   const species = parseSpecies(getRequiredValue(formData, "species"));
@@ -240,7 +242,7 @@ export async function createSavedSearchAlert(_: EnquiryResult, formData: FormDat
 
   await sendPlatformEmail({
     to: email,
-    subject: "Your Paws of Cape Town search alert is active",
+    subject: `Your ${siteName} search alert is active`,
     text: [
       "Your rescue animal search alert has been saved.",
       query ? `Search: ${query}` : "Search: All animals",
@@ -264,6 +266,7 @@ export async function createSavedSearchAlert(_: EnquiryResult, formData: FormDat
 }
 
 export async function registerShelter(_: EnquiryResult, formData: FormData): Promise<EnquiryResult> {
+  const siteName = await getSiteName();
   const shelterName = getRequiredValue(formData, "shelterName");
   const shelterEmail = getRequiredValue(formData, "shelterEmail").toLowerCase();
   const primaryName = getRequiredValue(formData, "primaryName");
@@ -395,11 +398,11 @@ export async function registerShelter(_: EnquiryResult, formData: FormData): Pro
           to: shelter.email,
           subject: `${shelter.name} registration received`,
           text: [
-            `${shelter.name} has been submitted for review on Paws of Cape Town.`,
+            `${shelter.name} has been submitted for review on ${siteName}.`,
             `Primary contact: ${primaryName} <${primaryEmail}>`,
           ].join("\n\n"),
           html: paragraphsToHtml([
-            `${shelter.name} has been submitted for review on Paws of Cape Town.`,
+            `${shelter.name} has been submitted for review on ${siteName}.`,
             `Primary contact: ${primaryName} <${primaryEmail}>`,
           ]),
         })

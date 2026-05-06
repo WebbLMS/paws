@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AnimalStatus, ShelterStatus } from "@/generated/prisma/enums";
 import { requireAdminSession } from "@/lib/admin-auth";
+import { defaultSiteName } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
 
 import { AdminShell } from "./admin-shell";
@@ -53,6 +54,7 @@ async function getAdminDashboard() {
     recentEnquiries,
     recentShelters,
     loggedActivity,
+    settings,
   ] = await Promise.all([
     prisma.shelter.count({
       where: {
@@ -134,6 +136,14 @@ async function getAdminDashboard() {
       },
       take: 7,
     }),
+    prisma.platformSettings.findUnique({
+      where: {
+        id: "platform",
+      },
+      select: {
+        siteName: true,
+      },
+    }),
   ]);
 
   const topShelters = shelters
@@ -201,6 +211,7 @@ async function getAdminDashboard() {
     pendingQueue,
     topShelters,
     activity,
+    siteName: settings?.siteName ?? defaultSiteName,
   };
 }
 
@@ -213,7 +224,7 @@ export default async function AdminDashboardPage() {
           <div className="admin-page-title">
             <div>
               <h1>Platform Overview</h1>
-              <p>Global statistics and pending actions across Paws of Cape Town.</p>
+              <p>Global statistics and pending actions across {dashboard.siteName}.</p>
             </div>
           </div>
 

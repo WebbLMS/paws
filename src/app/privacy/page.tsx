@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PublicFooter, PublicHeader } from "@/app/public-chrome";
+import { defaultSiteName } from "@/lib/branding";
 import { getPublicBranding } from "@/lib/platform-settings";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Paws of Cape Town",
-  description: "How Paws of Cape Town handles personal information under South African privacy law.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getPublicBranding();
+  const siteName = branding.siteName ?? defaultSiteName;
+
+  return {
+    title: `Privacy Policy | ${siteName}`,
+    description: `How ${siteName} handles personal information under South African privacy law.`,
+  };
+}
 
 export default async function PrivacyPage() {
   const branding = await getPublicBranding();

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { ShelterStatus } from "@/generated/prisma/enums";
 import type { getAdminSession } from "@/lib/admin-auth";
+import { defaultSiteName } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
 
 type AdminSession = NonNullable<Awaited<ReturnType<typeof getAdminSession>>>;
@@ -23,11 +24,22 @@ function AdminIcon() {
 }
 
 export async function AdminShell({ active = "overview", children }: AdminShellProps) {
-  const pendingShelters = await prisma.shelter.count({
-    where: {
-      status: ShelterStatus.PENDING,
-    },
-  });
+  const [pendingShelters, settings] = await Promise.all([
+    prisma.shelter.count({
+      where: {
+        status: ShelterStatus.PENDING,
+      },
+    }),
+    prisma.platformSettings.findUnique({
+      where: {
+        id: "platform",
+      },
+      select: {
+        siteName: true,
+      },
+    }),
+  ]);
+  const siteName = settings?.siteName ?? defaultSiteName;
 
   return (
     <main className="admin-shell">
@@ -38,7 +50,7 @@ export async function AdminShell({ active = "overview", children }: AdminShellPr
           </span>
           <div>
             <strong>Admin</strong>
-            <em>Paws of Cape Town</em>
+            <em>{siteName}</em>
           </div>
         </Link>
 

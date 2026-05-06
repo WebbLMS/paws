@@ -10,8 +10,10 @@ import { redirect, RedirectType } from "next/navigation";
 
 import { ShelterStatus, UserRole } from "@/generated/prisma/enums";
 import { createAdminSession, clearAdminSession, requireAdminSession, validateAdminCredentials } from "@/lib/admin-auth";
+import { defaultSiteName } from "@/lib/branding";
 import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
 import { recordPlatformActivity } from "@/lib/platform-activity";
+import { getSiteName } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
 function getValue(formData: FormData, key: string) {
@@ -195,6 +197,7 @@ export async function logoutAdmin() {
 
 export async function approveShelter(formData: FormData) {
   await requireAdminSession();
+  const siteName = await getSiteName();
 
   const shelterId = getValue(formData, "shelterId");
   const returnTo = getValue(formData, "returnTo");
@@ -228,12 +231,12 @@ export async function approveShelter(formData: FormData) {
     to: shelter.email,
     subject: `${shelter.name} has been approved`,
     text: [
-      `${shelter.name} has been approved on Paws of Cape Town.`,
+      `${shelter.name} has been approved on ${siteName}.`,
       "Your public shelter profile and available animal listings can now appear on the site.",
       `Shelter dashboard: ${appUrl("/shelter")}`,
     ].join("\n\n"),
     html: paragraphsToHtml([
-      `${shelter.name} has been approved on Paws of Cape Town.`,
+      `${shelter.name} has been approved on ${siteName}.`,
       "Your public shelter profile and available animal listings can now appear on the site.",
       `Shelter dashboard: ${appUrl("/shelter")}`,
     ]),
@@ -251,6 +254,7 @@ export async function approveShelter(formData: FormData) {
 
 export async function rejectShelter(formData: FormData) {
   await requireAdminSession();
+  const siteName = await getSiteName();
 
   const shelterId = getValue(formData, "shelterId");
   const returnTo = getValue(formData, "returnTo");
@@ -284,11 +288,11 @@ export async function rejectShelter(formData: FormData) {
     to: shelter.email,
     subject: `${shelter.name} registration update`,
     text: [
-      `${shelter.name} was not approved on Paws of Cape Town at this stage.`,
+      `${shelter.name} was not approved on ${siteName} at this stage.`,
       "Contact PAWS support if you believe this needs review.",
     ].join("\n\n"),
     html: paragraphsToHtml([
-      `${shelter.name} was not approved on Paws of Cape Town at this stage.`,
+      `${shelter.name} was not approved on ${siteName} at this stage.`,
       "Contact PAWS support if you believe this needs review.",
     ]),
   });
@@ -305,6 +309,7 @@ export async function rejectShelter(formData: FormData) {
 
 export async function suspendShelter(formData: FormData) {
   await requireAdminSession();
+  const siteName = await getSiteName();
 
   const shelterId = getValue(formData, "shelterId");
   const returnTo = getValue(formData, "returnTo");
@@ -338,11 +343,11 @@ export async function suspendShelter(formData: FormData) {
     to: shelter.email,
     subject: `${shelter.name} has been suspended`,
     text: [
-      `${shelter.name} has been suspended on Paws of Cape Town.`,
+      `${shelter.name} has been suspended on ${siteName}.`,
       "Public shelter profile and animal listings are hidden while the shelter is suspended.",
     ].join("\n\n"),
     html: paragraphsToHtml([
-      `${shelter.name} has been suspended on Paws of Cape Town.`,
+      `${shelter.name} has been suspended on ${siteName}.`,
       "Public shelter profile and animal listings are hidden while the shelter is suspended.",
     ]),
   });
@@ -567,6 +572,7 @@ export async function updateUser(formData: FormData) {
 
 export async function sendUserPasswordResetEmail(formData: FormData) {
   await requireAdminSession();
+  const siteName = await getSiteName();
 
   const userId = getValue(formData, "userId");
   if (!userId) throw new Error("User ID is required.");
@@ -621,7 +627,7 @@ export async function sendUserPasswordResetEmail(formData: FormData) {
 
   await sendPlatformEmail({
     to: user.email,
-    subject: "Reset your Paws of Cape Town password",
+    subject: `Reset your ${siteName} password`,
     text: [
       `Hi ${user.name},`,
       "A PAWS admin requested a password reset for your shelter account.",
@@ -671,6 +677,7 @@ export async function deleteUser(formData: FormData) {
 export async function updatePlatformSettings(formData: FormData) {
   await requireAdminSession();
 
+  const siteName = getValue(formData, "siteName") || defaultSiteName;
   const analyticsInput = getValue(formData, "googleAnalyticsId");
   const googleAnalyticsId = parseGoogleAnalyticsId(analyticsInput);
   const existingLogoUrl = getValue(formData, "existingSiteLogoUrl") || null;
@@ -695,7 +702,7 @@ export async function updatePlatformSettings(formData: FormData) {
   const smtpPassword = submittedSmtpPassword || existingSettings?.smtpPassword || null;
   const smtpSessionLimit = parsePositiveInt(getValue(formData, "smtpSessionLimit"), 3, 1, 20);
   const smtpNoReplyEmail = getValue(formData, "smtpNoReplyEmail").toLowerCase() || null;
-  const smtpNoReplyName = getValue(formData, "smtpNoReplyName") || "Paws of Cape Town";
+  const smtpNoReplyName = getValue(formData, "smtpNoReplyName") || defaultSiteName;
 
   if (analyticsInput && !googleAnalyticsId) {
     redirect("/admin/settings?error=invalid-analytics-id");
@@ -721,6 +728,7 @@ export async function updatePlatformSettings(formData: FormData) {
     },
     create: {
       id: "platform",
+      siteName,
       googleAnalyticsId,
       siteLogoUrl,
       siteIconUrl,
@@ -736,6 +744,7 @@ export async function updatePlatformSettings(formData: FormData) {
       smtpNoReplyName,
     },
     update: {
+      siteName,
       googleAnalyticsId,
       siteLogoUrl,
       siteIconUrl,

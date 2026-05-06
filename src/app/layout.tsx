@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 
+import { defaultSiteName } from "@/lib/branding";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
 import "./globals.css";
@@ -18,9 +19,10 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getPlatformSettings();
+  const siteName = settings?.siteName ?? defaultSiteName;
 
   return {
-    title: "Paws of Cape Town | Rescue Animal Marketplace",
+    title: `${siteName} | Rescue Animal Marketplace`,
     description:
       "Search rescue animals from Cape Town shelters and enquire about adoption in one place.",
     icons: settings?.siteIconUrl

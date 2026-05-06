@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 
+import { defaultSiteName } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
 
 type MailMessage = {
@@ -60,7 +61,7 @@ export async function sendPlatformEmail(message: MailMessage) {
   const security = settings.smtpSecurity.toUpperCase();
   const secure = security === "SSL";
   const requireTLS = security === "TLS";
-  const fromName = settings.smtpNoReplyName || "Paws of Cape Town";
+  const fromName = settings.smtpNoReplyName || defaultSiteName;
 
   const transporter = nodemailer.createTransport({
     host: settings.smtpHost,

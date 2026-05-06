@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PhotoViewer } from "@/app/photo-viewer";
 import { PublicFooter, PublicHeader } from "@/app/public-chrome";
 import { AnimalStatus, ShelterStatus } from "@/generated/prisma/enums";
+import { defaultSiteName } from "@/lib/branding";
 import { getPublicBranding } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 import { recordAnimalProfileView } from "@/lib/profile-views";
@@ -191,15 +192,16 @@ async function getAnimal(slug: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const animal = await getAnimal(slug);
+  const [animal, branding] = await Promise.all([getAnimal(slug), getPublicBranding()]);
+  const siteName = branding.siteName ?? defaultSiteName;
 
   if (!animal) {
     return {
-      title: "Animal Not Found | Paws of Cape Town",
+      title: `Animal Not Found | ${siteName}`,
     };
   }
 
-  const title = `${animal.name} is available for adoption | Paws of Cape Town`;
+  const title = `${animal.name} is available for adoption | ${siteName}`;
   const description = animal.summary ?? animal.description ?? `Meet ${animal.name} from ${animal.shelter.name}.`;
   const url = `${siteUrl}/animals/${animal.slug}`;
   const image = animal.profileImageUrl ?? fallbackPhoto;
@@ -215,7 +217,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description,
       url,
       images: [image],
-      siteName: "Paws of Cape Town",
+      siteName,
       type: "website",
     },
   };

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { defaultSiteName } from "@/lib/branding";
+import { getPublicBranding } from "@/lib/platform-settings";
+
 import { SignOutButton } from "./sign-out-button";
 
 function PawIcon() {
@@ -28,7 +31,10 @@ type ShelterPortalShellProps = {
   children: ReactNode;
 };
 
-export function ShelterPortalShell({ shelter, active = "dashboard", enquiryCount = 0, children }: ShelterPortalShellProps) {
+export async function ShelterPortalShell({ shelter, active = "dashboard", enquiryCount = 0, children }: ShelterPortalShellProps) {
+  const branding = await getPublicBranding();
+  const siteName = branding.siteName ?? defaultSiteName;
+
   return (
     <main className="portal-shell">
       <aside className="portal-sidebar">
@@ -36,7 +42,7 @@ export function ShelterPortalShell({ shelter, active = "dashboard", enquiryCount
           <span>
             <PawIcon />
           </span>
-          <strong>Paws of Cape Town</strong>
+          <strong>{siteName}</strong>
         </Link>
 
         <nav className="portal-nav" aria-label="Shelter navigation">
