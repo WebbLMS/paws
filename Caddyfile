@@ -1,8 +1,4 @@
-{
-	email {$ACME_EMAIL}
-}
-
-{$SITE_HOST} {
+{$SITE_HOST:159.223.208.156} {
 	encode gzip zstd
 	reverse_proxy app:3000
 }

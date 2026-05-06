@@ -45,6 +45,8 @@ services:
     restart: unless-stopped
     depends_on:
       - app
+    environment:
+      SITE_HOST: ${SITE_HOST:-159.223.208.156}
     ports:
       - "80:80"
       - "443:443"
