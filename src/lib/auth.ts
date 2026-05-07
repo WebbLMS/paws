@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 
 import { UserRole } from "@/generated/prisma/enums";
 
+import { configuredAppUrl } from "./app-url";
 import { prisma } from "./prisma";
 
 async function getShelterForNewUser(email: string) {
@@ -41,7 +42,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  trustedOrigins: [process.env.BETTER_AUTH_URL ?? "http://localhost:3000"],
+  trustedOrigins: Array.from(new Set([configuredAppUrl(), process.env.BETTER_AUTH_URL].filter(Boolean) as string[])),
   databaseHooks: {
     user: {
       create: {

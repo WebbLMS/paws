@@ -46,30 +46,65 @@ async function getAnimals(): Promise<PublicAnimal[]> {
     ],
   });
 
-  return animals.map((animal) => ({
-    id: animal.id,
-    slug: animal.slug,
-    name: animal.name,
-    species: displayEnum(animal.species),
-    breed: animal.breed ?? "Mixed breed",
-    age: formatAge(animal.ageMonths),
-    sex: displayEnum(animal.sex),
-    size: displayEnum(animal.size),
-    shelter: animal.shelter.name,
-    shelterSlug: animal.shelter.slug,
-    area: animal.suburb ?? animal.shelter.suburb ?? animal.city,
-    photo: animal.profileImageUrl ?? "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=900&h=900&fit=crop",
-    traits: animal.traits,
-    health: {
-      vaccinationsUpToDate: animal.vaccinationsUpToDate,
-      neutered: animal.neutered,
-      microchipped: animal.microchipped,
-      tickFleaPreventionActive: animal.tickFleaPreventionActive,
-    },
-    description: animal.summary ?? animal.description ?? "Contact the shelter to learn more about this animal.",
-    urgent: animal.isUrgent,
-    recent: animal.publishedAt ? animal.publishedAt >= recentCutoff : false,
-  }));
+  return animals.map((animal) => {
+    const species = displayEnum(animal.species);
+    const sex = displayEnum(animal.sex);
+    const size = displayEnum(animal.size);
+    const breed = animal.breed ?? "Mixed breed";
+    const age = formatAge(animal.ageMonths);
+    const area = animal.suburb ?? animal.shelter.suburb ?? animal.city;
+    const description = animal.summary ?? animal.description ?? "Contact the shelter to learn more about this animal.";
+    const healthText = [
+      animal.vaccinationsUpToDate ? "vaccinated vaccinations up to date" : "",
+      animal.neutered ? "neutered sterilised spayed" : "",
+      animal.microchipped ? "microchipped" : "",
+      animal.tickFleaPreventionActive ? "tick flea prevention protected" : "",
+    ].join(" ");
+
+    return {
+      id: animal.id,
+      slug: animal.slug,
+      name: animal.name,
+      species,
+      breed,
+      age,
+      sex,
+      size,
+      shelter: animal.shelter.name,
+      shelterSlug: animal.shelter.slug,
+      area,
+      photo: animal.profileImageUrl ?? "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=900&h=900&fit=crop",
+      traits: animal.traits,
+      health: {
+        vaccinationsUpToDate: animal.vaccinationsUpToDate,
+        neutered: animal.neutered,
+        microchipped: animal.microchipped,
+        tickFleaPreventionActive: animal.tickFleaPreventionActive,
+      },
+      description,
+      searchText: [
+        animal.name,
+        species,
+        breed,
+        age,
+        sex,
+        size,
+        area,
+        animal.shelter.name,
+        animal.shelter.suburb,
+        animal.shelter.city,
+        animal.summary,
+        animal.description,
+        animal.traits.join(" "),
+        healthText,
+        animal.isUrgent ? "urgent needs home priority" : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+      urgent: animal.isUrgent,
+      recent: animal.publishedAt ? animal.publishedAt >= recentCutoff : false,
+    };
+  });
 }
 
 async function getShelters(): Promise<PublicShelter[]> {

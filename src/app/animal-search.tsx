@@ -29,6 +29,7 @@ export type PublicAnimal = {
     tickFleaPreventionActive: boolean;
   };
   description: string;
+  searchText: string;
   urgent?: boolean;
   recent?: boolean;
 };
@@ -87,15 +88,16 @@ function SearchIcon() {
 }
 
 function scoreSearch(query: string, animal: PublicAnimal) {
-  const healthText = [
-    animal.health.vaccinationsUpToDate ? "vaccinated vaccinations up to date" : "",
-    animal.health.neutered ? "neutered sterilised spayed" : "",
-    animal.health.microchipped ? "microchipped" : "",
-    animal.health.tickFleaPreventionActive ? "tick flea prevention protected" : "",
-  ].join(" ");
-  const text = `${animal.name} ${animal.species} ${animal.breed} ${animal.description} ${animal.traits.join(" ")} ${healthText} ${animal.shelter} ${animal.area} ${animal.age} ${animal.sex} ${animal.size}`.toLowerCase();
-  const words = query.toLowerCase().split(/\s+/).filter((word) => word.length > 1);
-  let score = words.reduce((total, word) => total + (text.includes(word) ? 10 : 0), 0);
+  const text = animal.searchText.toLowerCase();
+  const normalizedQuery = query.toLowerCase().trim();
+  const words = normalizedQuery.split(/\s+/).filter((word) => word.length > 1);
+  let score = text.includes(normalizedQuery) ? 30 : 0;
+
+  score += words.reduce((total, word) => {
+    if (text.includes(word)) return total + 10;
+    const stem = word.replace(/(ing|ed|s)$/u, "");
+    return stem.length > 2 && text.includes(stem) ? total + 5 : total;
+  }, 0);
 
   if (/\b(urgent|needs? home|at risk)\b/i.test(query) && animal.urgent) score += 25;
   if (/\b(new|recent|latest)\b/i.test(query) && animal.recent) score += 25;
@@ -248,8 +250,7 @@ export function AnimalSearch({
   }
 
   function openAnimalProfile(animal: PublicAnimal) {
-    window.scrollTo(0, 0);
-    router.push(`/animals/${animal.slug}`, { scroll: true });
+    router.push(`/animals/${animal.slug}`, { scroll: false });
   }
 
   function openAnimalProfileFromKeyboard(event: KeyboardEvent<HTMLElement>, animal: PublicAnimal) {
@@ -304,7 +305,7 @@ export function AnimalSearch({
         </div>
       </section>
 
-      <section className="filters" aria-label="Animal filters">
+      <section className="filters" id="animals" aria-label="Animal filters">
         <div className="filter-row">
           <button className={`filter-chip ${showFilters ? "active" : ""}`} type="button" onClick={() => setShowFilters((value) => !value)}>
             Filters
@@ -428,7 +429,7 @@ export function AnimalSearch({
         ) : null}
       </section>
 
-      <section className="animal-section" id="animals">
+      <section className="animal-section">
         {results.length ? (
           <div className="animal-grid">
             {results.map((animal, index) => (

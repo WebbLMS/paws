@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PhotoViewer } from "@/app/photo-viewer";
 import { PublicFooter, PublicHeader } from "@/app/public-chrome";
 import { AnimalStatus, ShelterStatus } from "@/generated/prisma/enums";
+import { configuredAppUrl } from "@/lib/app-url";
 import { defaultSiteName } from "@/lib/branding";
 import { getPublicBranding } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +17,7 @@ import { ScrollToTop } from "./scroll-to-top";
 export const dynamic = "force-dynamic";
 
 const fallbackPhoto = "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=1200&h=900&fit=crop";
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = configuredAppUrl();
 
 function displayEnum(value: string) {
   return value

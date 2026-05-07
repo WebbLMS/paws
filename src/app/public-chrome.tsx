@@ -66,9 +66,6 @@ export function PublicHeader({ active, branding }: { active?: "adopt" | "shelter
           <span>{siteName}</span>
         </Link>
         <nav className="nav" aria-label="Primary navigation">
-          <Link href="/#animals" className={active === "adopt" ? "active-nav" : ""}>
-            Adopt
-          </Link>
           <Link href="/#shelters" className={active === "shelters" ? "active-nav" : ""}>
             Our Shelters
           </Link>
@@ -108,16 +105,11 @@ export function PublicFooter({ branding }: { branding?: PublicBranding }) {
         <div>
           <h3>For the Public</h3>
           <Link href="/#animals">Search Animals</Link>
-          <Link href="/#stories">Adoption Process</Link>
-          <Link href="/#stories">Success Stories</Link>
-          <Link href="/#stories">Foster an Animal</Link>
         </div>
         <div>
           <h3>For Shelters</h3>
           <Link href="/shelter/login">Shelter Login</Link>
           <Link href="/shelter/register">Partner With Us</Link>
-          <Link href="/#shelters">Resources</Link>
-          <Link href="/#shelters">Contact Support</Link>
         </div>
       </div>
       <div className="footer-bottom">

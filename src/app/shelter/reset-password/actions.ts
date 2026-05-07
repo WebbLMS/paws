@@ -6,6 +6,7 @@ import { hashPassword } from "better-auth/crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { currentAppUrl } from "@/lib/app-url";
 import { auth } from "@/lib/auth";
 import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
 import { getSiteName } from "@/lib/platform-settings";
@@ -23,11 +24,6 @@ function getValue(formData: FormData, key: string) {
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function appUrl(pathname: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
-  return `${baseUrl.replace(/\/$/, "")}${pathname}`;
 }
 
 function hashResetToken(token: string) {
@@ -141,7 +137,7 @@ export async function requestPasswordResetEmail(
     }),
   ]);
 
-  const resetUrl = appUrl(`/shelter/reset-password?token=${encodeURIComponent(token)}`);
+  const resetUrl = await currentAppUrl(`/shelter/reset-password?token=${encodeURIComponent(token)}`);
 
   await sendPlatformEmail({
     to: user.email,

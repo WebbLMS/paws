@@ -10,6 +10,7 @@ import { redirect, RedirectType } from "next/navigation";
 
 import { ShelterStatus, UserRole } from "@/generated/prisma/enums";
 import { createAdminSession, clearAdminSession, requireAdminSession, validateAdminCredentials } from "@/lib/admin-auth";
+import { currentAppUrl } from "@/lib/app-url";
 import { defaultSiteName } from "@/lib/branding";
 import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
 import { recordPlatformActivity } from "@/lib/platform-activity";
@@ -72,11 +73,6 @@ function parsePositiveInt(value: string, fallback: number, min: number, max: num
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
-}
-
-function appUrl(pathname: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
-  return `${baseUrl.replace(/\/$/, "")}${pathname}`;
 }
 
 function randomId() {
@@ -227,18 +223,20 @@ export async function approveShelter(formData: FormData) {
     },
   });
 
+  const shelterDashboardUrl = await currentAppUrl("/shelter");
+
   await sendPlatformEmail({
     to: shelter.email,
     subject: `${shelter.name} has been approved`,
     text: [
       `${shelter.name} has been approved on ${siteName}.`,
       "Your public shelter profile and available animal listings can now appear on the site.",
-      `Shelter dashboard: ${appUrl("/shelter")}`,
+      `Shelter dashboard: ${shelterDashboardUrl}`,
     ].join("\n\n"),
     html: paragraphsToHtml([
       `${shelter.name} has been approved on ${siteName}.`,
       "Your public shelter profile and available animal listings can now appear on the site.",
-      `Shelter dashboard: ${appUrl("/shelter")}`,
+      `Shelter dashboard: ${shelterDashboardUrl}`,
     ]),
   });
 
@@ -623,7 +621,7 @@ export async function sendUserPasswordResetEmail(formData: FormData) {
     }),
   ]);
 
-  const resetUrl = appUrl(`/shelter/reset-password?token=${encodeURIComponent(token)}`);
+  const resetUrl = await currentAppUrl(`/shelter/reset-password?token=${encodeURIComponent(token)}`);
 
   await sendPlatformEmail({
     to: user.email,

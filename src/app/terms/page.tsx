@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PublicFooter, PublicHeader } from "@/app/public-chrome";
+import { ScrollToTop } from "@/app/scroll-to-top";
 import { defaultSiteName } from "@/lib/branding";
 import { getPublicBranding } from "@/lib/platform-settings";
 
@@ -23,6 +24,7 @@ export default async function TermsPage() {
 
   return (
     <>
+      <ScrollToTop />
       <PublicHeader branding={branding} />
       <main className="legal-page">
         <section className="legal-hero">

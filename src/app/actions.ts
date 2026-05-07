@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { AnimalStatus, ShelterStatus, Species, UserRole } from "@/generated/prisma/enums";
+import { currentAppUrl } from "@/lib/app-url";
 import { auth } from "@/lib/auth";
 import { paragraphsToHtml, sendPlatformEmail } from "@/lib/email";
 import { recordPlatformActivity } from "@/lib/platform-activity";
@@ -44,11 +45,6 @@ function nullableUrl(value: string) {
   } catch {
     return null;
   }
-}
-
-function appUrl(path = "") {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
-  return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
 async function uniqueShelterSlug(name: string) {
@@ -148,7 +144,7 @@ export async function createAdoptionEnquiry(_: EnquiryResult, formData: FormData
     },
   });
 
-  const animalUrl = appUrl(`/animals/${animal.slug}`);
+  const animalUrl = await currentAppUrl(`/animals/${animal.slug}`);
   await Promise.allSettled([
     sendPlatformEmail({
       to: animal.shelter.email,
@@ -378,6 +374,8 @@ export async function registerShelter(_: EnquiryResult, formData: FormData): Pro
     },
   });
 
+  const shelterLoginUrl = await currentAppUrl("/shelter/login");
+
   await Promise.allSettled([
     sendPlatformEmail({
       to: primaryEmail,
@@ -385,12 +383,12 @@ export async function registerShelter(_: EnquiryResult, formData: FormData): Pro
       text: [
         `Thanks ${primaryName}, ${shelter.name} has been submitted for review.`,
         "You can sign in, but the public shelter profile and available listings will only show once the PAWS admin approves the shelter.",
-        `Shelter login: ${appUrl("/shelter/login")}`,
+        `Shelter login: ${shelterLoginUrl}`,
       ].join("\n\n"),
       html: paragraphsToHtml([
         `Thanks ${primaryName}, ${shelter.name} has been submitted for review.`,
         "You can sign in, but the public shelter profile and available listings will only show once the PAWS admin approves the shelter.",
-        `Shelter login: ${appUrl("/shelter/login")}`,
+        `Shelter login: ${shelterLoginUrl}`,
       ]),
     }),
     shelter.email !== primaryEmail
