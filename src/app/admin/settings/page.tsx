@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string | string[]; saved?: string | string[] }>;
+  searchParams: Promise<{ error?: string | string[]; saved?: string | string[]; warning?: string | string[] }>;
 }) {
   const [session, params, settings] = await Promise.all([
     requireAdminSession(),
@@ -28,6 +28,7 @@ export default async function AdminSettingsPage({
   const invalidAnalyticsId = params.error === "invalid-analytics-id";
   const invalidImage = params.error === "invalid-image";
   const invalidEmailSettings = params.error === "invalid-email-settings";
+  const emailDisabled = params.warning === "email-disabled";
 
   return (
     <AdminShell session={session} active="settings">
@@ -56,6 +57,11 @@ export default async function AdminSettingsPage({
             {invalidEmailSettings ? (
               <div className="admin-error">
                 To enable email, add a valid SMTP host, username, password, and no-reply email address.
+              </div>
+            ) : null}
+            {emailDisabled ? (
+              <div className="admin-error">
+                Branding was saved. Email delivery was left disabled because the SMTP settings are incomplete.
               </div>
             ) : null}
 

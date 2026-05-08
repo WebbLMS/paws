@@ -706,10 +706,6 @@ export async function updatePlatformSettings(formData: FormData) {
     redirect("/admin/settings?error=invalid-analytics-id");
   }
 
-  if (smtpEnabled && (!smtpHost || !smtpUsername || !smtpPassword || !smtpNoReplyEmail || !isValidEmail(smtpNoReplyEmail))) {
-    redirect("/admin/settings?error=invalid-email-settings");
-  }
-
   let siteLogoUrl = existingLogoUrl;
   let siteIconUrl = existingIconUrl;
 
@@ -719,6 +715,9 @@ export async function updatePlatformSettings(formData: FormData) {
   } catch {
     redirect("/admin/settings?error=invalid-image");
   }
+
+  const emailSettingsValid = Boolean(smtpHost && smtpUsername && smtpPassword && smtpNoReplyEmail && isValidEmail(smtpNoReplyEmail));
+  const effectiveSmtpEnabled = smtpEnabled && emailSettingsValid;
 
   await prisma.platformSettings.upsert({
     where: {
@@ -730,7 +729,7 @@ export async function updatePlatformSettings(formData: FormData) {
       googleAnalyticsId,
       siteLogoUrl,
       siteIconUrl,
-      smtpEnabled,
+      smtpEnabled: effectiveSmtpEnabled,
       smtpHost,
       smtpPort,
       smtpSecurity,
@@ -746,7 +745,7 @@ export async function updatePlatformSettings(formData: FormData) {
       googleAnalyticsId,
       siteLogoUrl,
       siteIconUrl,
-      smtpEnabled,
+      smtpEnabled: effectiveSmtpEnabled,
       smtpHost,
       smtpPort,
       smtpSecurity,
@@ -761,5 +760,5 @@ export async function updatePlatformSettings(formData: FormData) {
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
-  redirect("/admin/settings?saved=1");
+  redirect(`/admin/settings?saved=1${smtpEnabled && !emailSettingsValid ? "&warning=email-disabled" : ""}`);
 }
