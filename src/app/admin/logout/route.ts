@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
-import { expiredAdminSessionCookieHeaders } from "@/lib/admin-auth";
+import { expiredAdminSessionCookieHeaders, shouldUseSecureAdminCookieForRequest } from "@/lib/admin-auth";
 import { requestAppUrl } from "@/lib/app-url";
 
 function logout(request: NextRequest) {
@@ -12,7 +12,7 @@ function logout(request: NextRequest) {
     status: 303,
   });
 
-  for (const cookie of expiredAdminSessionCookieHeaders()) {
+  for (const cookie of expiredAdminSessionCookieHeaders(shouldUseSecureAdminCookieForRequest(request))) {
     response.headers.append("Set-Cookie", cookie);
   }
 

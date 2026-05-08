@@ -350,7 +350,42 @@ npm run build
 
 Note: `npm run build` has occasionally hung in the local environment even when lint and TypeScript checks pass. If it hangs, kill the stuck `next build` process and rerun.
 
-## Deployment Notes for DigitalOcean App Platform
+## Staging Deployment
+
+Staging currently runs on the DigitalOcean VPS at `159.223.208.156`. It is not behind a domain yet, so staging URLs should use the request host/IP rather than a hardcoded hostname.
+
+Server layout:
+
+- Repository checkout: `/opt/paws`
+- Environment file: `/opt/paws/.env.staging`
+- Compose file: `docker-compose.staging.yml`
+- Public entrypoint: Caddy on ports `80` and `443`
+- App container: Next.js on `127.0.0.1:3000`
+- Database: Postgres container with persistent Docker volume
+- Uploads: `paws_uploads` Docker volume mounted at `/app/public/uploads`
+
+Deploy latest `main` to staging:
+
+```bash
+ssh root@159.223.208.156
+cd /opt/paws
+git pull --ff-only origin main
+docker compose --env-file .env.staging -f docker-compose.staging.yml build app
+docker compose --env-file .env.staging -f docker-compose.staging.yml run --rm app npx prisma migrate deploy
+docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
+```
+
+Verify staging:
+
+```bash
+docker compose --env-file .env.staging -f docker-compose.staging.yml ps
+curl -I http://159.223.208.156/
+curl -I http://159.223.208.156/admin/logout
+```
+
+The logout response should redirect to the same IP host, for example `http://159.223.208.156/admin/login`.
+
+## Production Deployment Notes
 
 Recommended production shape:
 

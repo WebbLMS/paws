@@ -3,7 +3,9 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "crypto";
 
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { NextRequest } from "next/server";
 
 const ADMIN_COOKIE = "paws_admin_session";
 const LEGACY_ADMIN_COOKIES = ["paws_master_admin"];
@@ -24,6 +26,36 @@ function secret() {
   return process.env.BETTER_AUTH_SECRET || "paws-local-admin-secret";
 }
 
+function configuredAdminCookieSecure() {
+  return [
+    process.env.BETTER_AUTH_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.APP_URL,
+  ].some((value) => value?.trim().startsWith("https://"));
+}
+
+function isHttpsProtocol(value: string | null) {
+  return value?.split(",")[0]?.trim().toLowerCase() === "https";
+}
+
+async function shouldUseSecureAdminCookie() {
+  const headerStore = await headers();
+  const forwardedProtocol = headerStore.get("x-forwarded-proto");
+
+  if (forwardedProtocol) return isHttpsProtocol(forwardedProtocol);
+
+  return configuredAdminCookieSecure();
+}
+
+export function shouldUseSecureAdminCookieForRequest(request: NextRequest) {
+  const forwardedProtocol = request.headers.get("x-forwarded-proto");
+
+  if (forwardedProtocol) return isHttpsProtocol(forwardedProtocol);
+
+  return configuredAdminCookieSecure();
+}
+
 function sign(value: string) {
   return createHmac("sha256", secret()).update(value).digest("hex");
 }
@@ -41,6 +73,7 @@ export function validateAdminCredentials(username: string, password: string) {
 
 export async function createAdminSession(username: string) {
   const cookieStore = await cookies();
+  const secure = await shouldUseSecureAdminCookie();
   const value = `${username}.${sign(username)}`;
 
   cookieStore.set(ADMIN_COOKIE, value, {
@@ -48,34 +81,35 @@ export async function createAdminSession(username: string) {
     maxAge: 60 * 60 * 8,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure,
   });
 }
 
 export async function clearAdminSession() {
   const cookieStore = await cookies();
+  const secure = await shouldUseSecureAdminCookie();
 
   for (const name of [ADMIN_COOKIE, ...LEGACY_ADMIN_COOKIES]) {
     cookieStore.set(name, "", {
-      ...expiredAdminCookieOptions(),
+      ...expiredAdminCookieOptions(secure),
       path: "/",
     });
   }
 }
 
-function expiredAdminCookieOptions() {
+function expiredAdminCookieOptions(secure: boolean) {
   return {
     httpOnly: true,
     expires: new Date(0),
     maxAge: 0,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure,
   } as const;
 }
 
-export function expiredAdminSessionCookieHeaders() {
+export function expiredAdminSessionCookieHeaders(secure = configuredAdminCookieSecure()) {
   const headers: string[] = [];
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secureAttribute = secure ? "; Secure" : "";
 
   for (const name of [ADMIN_COOKIE, ...LEGACY_ADMIN_COOKIES]) {
     for (const domain of ADMIN_COOKIE_DOMAINS) {
@@ -83,7 +117,7 @@ export function expiredAdminSessionCookieHeaders() {
         headers.push(
           `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0${
             domain ? `; Domain=${domain}` : ""
-          }; HttpOnly; SameSite=Lax${secure}`,
+          }; HttpOnly; SameSite=Lax${secureAttribute}`,
         );
       }
     }
