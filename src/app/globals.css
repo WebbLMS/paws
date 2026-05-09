@@ -178,10 +178,10 @@ svg {
 }
 
 .hero {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid rgba(19, 78, 74, 0.9);
   background:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 34rem),
-    linear-gradient(180deg, #fbfefd 0%, var(--wash) 100%);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.13), transparent 32rem),
+    linear-gradient(180deg, #134e4a 0%, #0f3f3b 100%);
   padding: 78px 24px 68px;
   text-align: center;
 }
@@ -194,11 +194,11 @@ svg {
 .hero-pill {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
   margin-bottom: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  background: var(--teal-pale);
-  color: var(--teal-deep);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(240, 253, 250, 0.92);
   padding: 10px 22px;
   font-size: 15px;
   font-weight: 720;
@@ -207,7 +207,7 @@ svg {
 
 .hero h1 {
   margin: 0;
-  color: var(--ink);
+  color: var(--white);
   font-size: clamp(36px, 5vw, 58px);
   font-weight: 830;
   letter-spacing: -0.04em;
@@ -216,13 +216,13 @@ svg {
 }
 
 .hero h1 span {
-  color: var(--teal);
+  color: #ccfbf1;
 }
 
 .hero p {
   max-width: 650px;
   margin: 23px auto 44px;
-  color: var(--muted);
+  color: rgba(226, 247, 244, 0.78);
   font-size: 18px;
   line-height: 1.75;
   animation: fade-up 520ms 150ms ease both;
@@ -239,10 +239,10 @@ svg {
   position: absolute;
   inset: -4px;
   border-radius: 28px;
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.32), rgba(16, 185, 129, 0.18), rgba(253, 224, 71, 0.16));
+  background: rgba(2, 6, 23, 0.18);
   content: "";
-  filter: blur(13px);
-  opacity: 0.72;
+  filter: blur(18px);
+  opacity: 0.95;
 }
 
 .search-box {
@@ -283,7 +283,7 @@ svg {
 .search-box button {
   border: 0;
   border-radius: 16px;
-  background: var(--teal);
+  background: #134e4a;
   color: var(--white);
   padding: 18px 30px;
   font-size: 16px;
@@ -295,7 +295,7 @@ svg {
 }
 
 .search-box button:hover {
-  background: var(--teal-dark);
+  background: #0f3f3b;
   transform: translateY(-1px);
 }
 
@@ -305,7 +305,7 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  color: #94a3b8;
+  color: rgba(204, 251, 241, 0.5);
   font-size: 14px;
   animation: fade-up 520ms 290ms ease both;
 }
@@ -313,16 +313,16 @@ svg {
 .popular button {
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: rgba(240, 253, 250, 0.76);
   padding: 0;
   text-decoration: underline;
-  text-decoration-color: var(--teal-pale);
+  text-decoration-color: rgba(204, 251, 241, 0.32);
   text-underline-offset: 4px;
 }
 
 .popular button:hover {
-  color: var(--teal);
-  text-decoration-color: var(--teal);
+  color: var(--white);
+  text-decoration-color: rgba(255, 255, 255, 0.72);
 }
 
 .filters,

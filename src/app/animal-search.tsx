@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type KeyboardEvent, useActionState, useMemo, useState } from "react";
 
 import { createAdoptionEnquiry, createSavedSearchAlert, recordPublicSearchActivity, type EnquiryResult } from "./actions";
-import { PawIcon, PublicFooter, PublicHeader, type PublicBranding } from "./public-chrome";
+import { PublicFooter, PublicHeader, type PublicBranding } from "./public-chrome";
 
 export type PublicAnimal = {
   id: string;
@@ -267,7 +267,6 @@ export function AnimalSearch({
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-pill">
-            <PawIcon />
             Connecting Cape Town rescues with loving homes
           </div>
           <h1>
