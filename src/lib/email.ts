@@ -68,8 +68,10 @@ export async function sendPlatformEmail(message: MailMessage) {
     port: settings.smtpPort,
     secure,
     requireTLS,
-    pool: true,
-    maxConnections: Math.max(1, settings.smtpSessionLimit || 3),
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
+    dnsTimeout: 10_000,
     authMethod: settings.smtpAuthType || "LOGIN",
     auth: {
       user: settings.smtpUsername,

@@ -139,7 +139,7 @@ export async function requestPasswordResetEmail(
 
   const resetUrl = await currentAppUrl(`/shelter/reset-password?token=${encodeURIComponent(token)}`);
 
-  await sendPlatformEmail({
+  const delivery = await sendPlatformEmail({
     to: user.email,
     subject: `Reset your ${siteName} password`,
     text: [
@@ -161,6 +161,16 @@ export async function requestPasswordResetEmail(
       ].filter(Boolean) as string[],
     ),
   });
+
+  if (!delivery.sent) {
+    return {
+      ok: false,
+      message:
+        delivery.reason === "smtp-not-configured"
+          ? "Password reset email is not configured yet. Ask the platform admin to complete email settings."
+          : "Could not send the reset email right now. Check email settings and try again.",
+    };
+  }
 
   return {
     ok: true,
